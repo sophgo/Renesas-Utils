@@ -540,10 +540,6 @@ int main(int argc, char *argv[])
 	}
 
 	bus = strtol(argv[1], NULL, 0);
-	if (bus != 0 && bus != 4) {
-		printf("%s\n", script_usage_info);
-		return -1;
-	}
 
 	addr = strtol(argv[2], NULL, 0);
 
