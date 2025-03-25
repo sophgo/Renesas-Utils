@@ -21,6 +21,7 @@ struct device_info {
 	char *name;
 	char *package;
 	uint64_t id;
+	int page_num;
 };
 
 struct device_info gen1_devices[] = {
@@ -88,7 +89,7 @@ struct device_info gen3_devices[] = {
 	{"ISL69260",	"40 LD QFN",	0x81},
 	{"RAA228113",	"32 LD QFN",	0x90},
 	{"RAA228234",	"40 LD QFN",	0xAF},
-	{"RAA228236",	"48 LD QFN",	0xAE},
+	{"RAA228236",	"48 LD QFN",	0xAE, 2},
 	{"RAA228924",	"48 LD QFN",	0x8F},
 	{"RAA228926",	"68 LD QFN",	0x8E},
 	{"RAA228928",	"56 LD QFN",	0xB4},
@@ -230,8 +231,211 @@ int get_device_id_reversion(struct pmic_device *dev, char *msg, int msglen)
 	return 0;
 }
 
+int select_page(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = i2c_smbus_write_byte_data(dev->fd, 0, page);
+	if (err) {
+		fprintf(stderr, "Select page failed\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int get_vout_command(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x21);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_COMMAND failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_vout_max(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x24);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_MAX failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_vout_min(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x2b);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_MIN failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_vout_ov(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x40);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_OV_FAULT failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_vout_uv(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x44);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_UV_FAULT failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_read_vout(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x88);
+	if (err < 0) {
+		fprintf(stderr, "Get READ_VOUT failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_read_iout(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x8c);
+	if (err < 0) {
+		fprintf(stderr, "Get READ_IOUT failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_read_pout(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x96);
+	if (err < 0) {
+		fprintf(stderr, "Get READ_POUT failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_read_temp1(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x8d);
+	if (err < 0) {
+		fprintf(stderr, "Get READ_TEMPERATURE_1 failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_read_temp2(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_word_data(dev->fd, 0x8e);
+	if (err < 0) {
+		fprintf(stderr, "Get READ_TEMPERATURE_2 failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int get_status_byte(struct pmic_device *dev, int page)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_read_byte_data(dev->fd, 0x78);
+	if (err < 0) {
+		fprintf(stderr, "Get STATUS_BYTE failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
 void show_device_info(struct pmic_device *dev)
 {
+	int err;
+	int i;
+
 	printf("Slave Address(7bit): 0x%02x\n", dev->addr);
 	printf("On SoC Bus: %d\n", dev->bus);
 	printf("Device ID: %X\n", dev->id);
@@ -240,6 +444,38 @@ void show_device_info(struct pmic_device *dev)
 	printf("Product: %s\n", dev->info->name);
 	printf("Package: %s\n", dev->info->package);
 	printf("Available NVM Slot Number: %d\n", dev->avl_nvm_slot_num);
+
+	printf("\n");
+
+	for (i = 0; i < dev->info->page_num; ++i) {
+
+		printf("Page%d\n", i);
+
+		int vo_cmd, vo_ov, vo_uv;
+
+		vo_cmd = get_vout_command(dev, i);
+		vo_ov = get_vout_ov(dev, i);
+		vo_uv = get_vout_uv(dev, i);
+
+		printf("\tVoltage Set: %dmV, Over Voltage: %dmV, Under Voltage: %dmV\n",
+		       vo_cmd, vo_ov, vo_uv);
+
+		int vout, iout, pout;
+
+		vout = get_read_vout(dev, i);
+		iout = get_read_iout(dev, i); /* unit is 0.1A */
+		pout = get_read_pout(dev, i);
+
+		printf("\tOutput Voltage: %dmV, Output Current: %dmA, Output Power: %dW\n",
+		       vout, iout * 100, pout);
+
+		int temp_max, temp;
+		temp_max = get_read_temp1(dev, i);
+		temp = get_read_temp2(dev, i);
+
+		printf("\tHottest Power Stage: %dC, Current Temperature: %dC\n",
+		       temp_max, temp);
+	}
 }
 
 static int i2c_bus_init(struct pmic_device *dev, int bus, int addr)
