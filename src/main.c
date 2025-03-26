@@ -160,12 +160,16 @@ struct {
 	int bus;
 	int addr;
 	char *file;
+	int rail;
+	int voltage;
 	const char *optstr;
 } gopt = {
 	.bus = -1,
 	.addr = -1,
 	.file = NULL,
-	.optstr = "b:a:f:vh",
+	.rail = -1,
+	.voltage = -1,
+	.optstr = "b:a:f:s:r:vh",
 };
 
 #define CMD_DEVICE_ID	0xad
@@ -253,6 +257,23 @@ int get_vout_command(struct pmic_device *dev, int page)
 		return err;
 
 	err = i2c_smbus_read_word_data(dev->fd, 0x21);
+	if (err < 0) {
+		fprintf(stderr, "Get VOUT_COMMAND failed\n");
+		return -EIO;
+	}
+
+	return err;
+}
+
+int set_vout_command(struct pmic_device *dev, int page, int voltage)
+{
+	int err;
+
+	err = select_page(dev, page);
+	if (err)
+		return err;
+
+	err = i2c_smbus_write_word_data(dev->fd, 0x21, voltage);
 	if (err < 0) {
 		fprintf(stderr, "Get VOUT_COMMAND failed\n");
 		return -EIO;
@@ -433,7 +454,6 @@ int get_status_byte(struct pmic_device *dev, int page)
 
 void show_device_info(struct pmic_device *dev)
 {
-	int err;
 	int i;
 
 	printf("Slave Address(7bit): 0x%02x\n", dev->addr);
@@ -779,7 +799,7 @@ free_buf:
 }
 
 static const char * const script_usage_info =
-"\nisl-util [-b i2c-bus-number -a i2c-slave-address] [-f config-file]\n\n"
+"\nisl-util [-s voltage -r rail] [-b i2c-bus-number -a i2c-slave-address] [-f config-file]\n\n"
 "-v : show version, then exit\n"
 "-h : show help, then exit\n"
 "-b i2c-bus-number : eg -b 0, means i2c-0\n"
@@ -903,12 +923,17 @@ int main(int argc, char *argv[])
 		case 'b':
 			gopt.bus = strtol(optarg, NULL, 0);
 			break;
-
 		case 'a':
 			gopt.addr = strtol(optarg, NULL, 0);
 			break;
 		case 'f':
 			gopt.file = strdup(optarg);
+			break;
+		case 's':
+			gopt.voltage = strtol(optarg, NULL, 0);
+			break;
+		case 'r':
+			gopt.rail = strtol(optarg, NULL, 0);
 			break;
 		case 'v':
 			printf("%d.%d\n", VERSION_MAJOR, VERSION_MINOR);
@@ -945,6 +970,13 @@ int main(int argc, char *argv[])
 
 	get_available_nvm_slot_number(&dev);
 
+	if (gopt.voltage >= 0) {
+		if (gopt.rail < 0) {
+			fprintf(stderr, "Should select rail\n");
+			return EINVAL;
+		}
+		set_vout_command(&dev, gopt.rail, gopt.voltage);
+	}
 	show_device_info(&dev);
 
 	if (gopt.file) {
